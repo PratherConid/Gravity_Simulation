@@ -1,0 +1,6 @@
+Programming Language: Python
+Package: pyopengl, numpy, matplotlib
+    pyopengl(python 3.9): pip install PyOpenGL-3.1.6-cp39-cp39-win_amd64.whl
+    pyopengl_accelerate(python 3.9): pip install PyOpenGL_accelerate-3.1.6-cp39-cp39-win_amd64.whl
+    pyopengl(python 3.10): pip install PyOpenGL-3.1.6-cp310-cp310-win_amd64.whl
+    pyopengl_accelerate(python 3.10): pip install PyOpenGL_accelerate-3.1.6-cp310-cp310-win_amd64.whl
