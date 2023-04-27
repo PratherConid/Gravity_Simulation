@@ -70,26 +70,22 @@ try:
     from OpenGL.GLUT import *
 except:
     print("OpenGL wrapper for python not found")
+
 import cv2
 import numpy as np
-from renderer.two_d import *
+from renderer.save_video import create_videowriter, save_scene_to_videowriter
+from renderer.two_d import loadTexture, drawQuadWithTexture
 
 def post_display(sr : Spherical_Render):
     if sr.paused:
         return
-    
-    time = sr.simulator.n_step * sr.simulator.dt
     # Periodic force applied to the wall， We'll see the entropy of the system increase
+    time = sr.simulator.n_step * sr.simulator.dt
     sr.simulator.physics['Accel-On-Particle']._a[0] = - 200 - 120 * math.cos(time + math.pi)
-    
-    width = glutGet(GLUT_WINDOW_WIDTH)
-    height = glutGet(GLUT_WINDOW_HEIGHT)
+
     if not hasattr(sr, "output"):
-        sr.output = cv2.VideoWriter('output.avi', cv2.VideoWriter_fourcc('M','J','P','G'), 25, (width, height))
-    screenshot_byte = glReadPixels(0,0,width,height,GL_RGBA, GL_UNSIGNED_BYTE)
-    screenshot_tr = np.frombuffer(screenshot_byte, np.uint8).reshape((width, height, 4))
-    screenshot = np.flip(screenshot_tr, 0)
-    sr.output.write(screenshot)
+        sr.output = create_videowriter("output.avi")
+    save_scene_to_videowriter(sr.output)
 spr.post_display = post_display
 
 def save_video(sr : Spherical_Render):

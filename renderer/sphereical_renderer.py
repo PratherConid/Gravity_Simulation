@@ -55,7 +55,7 @@ class Spherical_Render:
         self.paused = True
 
         # Direction of light
-        self.direction = [0.0, 20.0, 20.0, 30.0]
+        self.direction = [1.0, 1.0, 1.0, 0.0]
 
         # Intensity of light
         self.intensity = [0.7, 0.7, 0.7, 1.0]

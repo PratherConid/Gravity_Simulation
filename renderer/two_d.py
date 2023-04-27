@@ -26,7 +26,7 @@ def loadTexture(textData : np.ndarray):
 # Draw a quad at (centerX, cernterY), with size (W, H)
 #   centerX ∈ [0, 1], centerY ∈ [0, 1]
 #   W ∈ [0, 1], H ∈ [0, 1]
-def drawQuad(centerX, centerY, W, H):
+def draw2DQuad(centerX, centerY, W, H):
     glPushMatrix()
     glMatrixMode(GL_PROJECTION)
     glLoadIdentity()
@@ -105,7 +105,7 @@ def barplot(data : np.ndarray, colorf : np.ndarray, centerX, centerY, W, H, y_ad
             cr, cg, cb, ca = colors
             cr = float(cr); cg = float(cg); cb = float(cb); ca = float(ca)
             glColor4f(cr, cg, cb, ca)
-        drawQuad((l + r) / 2 + centerX, (u + d) / 2 + centerY, r - l, u - d)
+        draw2DQuad((l + r) / 2 + centerX, (u + d) / 2 + centerY, r - l, u - d)
 
 # x ∈ [0, 1], y ∈ [0, 1]
 def renderText(string : str, x, y, line_width, size):

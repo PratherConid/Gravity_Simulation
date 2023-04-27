@@ -233,11 +233,6 @@ def extra_display(sr : Spherical_Render):
             gluCylinder(gluNewQuadric(), cylin_rad, cylin_rad, h, 5, 5)
             glPopMatrix()
 
-        glPushMatrix()
-        # Set color to white
-        glColor3f(0.0, 0.0, 0.0)
-        glPopMatrix()
-
         glTranslatef(lx, ly, lz)
     
     if sr.display_mode == 3:
