@@ -187,55 +187,62 @@ class IdealGas_Mut_E(Physics):
         dim      : int          = sim.dim
         assert sim.pr[self.key_r_1].shape == (sim.N,)
         assert sim.pr[self.key_r_2].shape == (sim.N,)
-        relev_1  : torch.Tensor = torch.nonzero(sim.pr[self.key_r_1]).flatten()
-        relev_2  : torch.Tensor = torch.nonzero(sim.pr[self.key_r_2]).flatten()
-        # Non-intersecting
-        assert torch.all(sim.pr[self.key_r_1] * sim.pr[self.key_r_2] == 0)
-        cnt_1    : int          = relev_1.shape[0]
-        cnt_2    : int          = relev_2.shape[0]
-        pos_1    : torch.Tensor = sim.pos[:, relev_1]
-        pos_2    : torch.Tensor = sim.pos[:, relev_2]
-        vel_1    : torch.Tensor = sim.vel[:, relev_1]
-        vel_2    : torch.Tensor = sim.vel[:, relev_2]
-        rad_1    : torch.Tensor = sim.pr[self.key_rad_1][relev_1]
-        rad_2    : torch.Tensor = sim.pr[self.key_rad_2][relev_2]
-        mass_1   : torch.Tensor = sim.pr["mass"][relev_1]
-        mass_2   : torch.Tensor = sim.pr["mass"][relev_2]
-        # pos_br_1[:][i][j] = position for i-th sphere
-        pos_br_1 : torch.Tensor = torch.broadcast_to(pos_1, (cnt_2, dim, cnt_1)).permute((1, 2, 0))
-        # pos_br_2[:][i][j] = position for j-th sphere
-        pos_br_2 : torch.Tensor = torch.broadcast_to(pos_2, (cnt_1, dim, cnt_2)).permute((1, 0, 2))
-        # diff[:][i][j] = position for i-th sphere   -   position for j-th sphere
-        diff     : torch.Tensor = pos_br_1 - pos_br_2
-        dist     : torch.Tensor = associative_float_sum(diff * diff, 0) ** 0.5
-        iszero   : torch.Tensor = (dist == 0).to(torch.float64)
-        dist += iszero
-        # vel_br_1[:][i][j] = velocity for i-th sphere
-        vel_br_1 : torch.Tensor = torch.broadcast_to(vel_1, (cnt_2, dim, cnt_1)).permute((1, 2, 0))
-        # vel_br_2[:][i][j] = velocity for j-th sphere
-        vel_br_2 : torch.Tensor = torch.broadcast_to(vel_2, (cnt_1, dim, cnt_2)).permute((1, 0, 2))
-        # vdiff[:][i][j] = velocity of i-th sphere   -   velocity of j-th sphere
-        vdiff    : torch.Tensor = vel_br_1 - vel_br_2
-        # vdiff_n[:][i][j] = vdiff[:][i][j] component along (diff[:][i][j] / dist)
-        vdiff_n  : torch.Tensor = associative_float_sum(diff * vdiff, 0) / dist
-        # rad_br_1[i][j] = radius of i-th sphere
-        rad_br_1 : torch.Tensor = torch.broadcast_to(rad_1, (cnt_2, cnt_1)).transpose(0, 1)
-        # rad_br_2[i][j] = radius of j-th sphere
-        rad_br_2 : torch.Tensor = torch.broadcast_to(rad_2, (cnt_1, cnt_2))
-        sumrad   : torch.Tensor = rad_br_1 + rad_br_2
-        collide  : torch.Tensor = (sumrad > dist) * (vdiff_n < 0)
-        # mass_br[i][j] = mass of the j-th sphere
-        mass_br_1: torch.Tensor = torch.broadcast_to(mass_1, (cnt_2, cnt_1)).transpose(0, 1)
-        mass_br_2: torch.Tensor = torch.broadcast_to(mass_2, (cnt_1, cnt_2))
-        summass  : torch.Tensor = mass_br_1 + mass_br_2
-        dv_mat_1 : torch.Tensor = - (2 * vdiff_n * collide * mass_br_2 / summass) * (diff / dist)
-        dv_1     : torch.Tensor = associative_float_sum(dv_mat_1, -1)
-        dv_mat_2 : torch.Tensor = (2 * vdiff_n * collide * mass_br_1 / summass) * (diff / dist)
-        dv_2     : torch.Tensor = associative_float_sum(dv_mat_2, -2)
-        ret      : torch.Tensor = torch.zeros((dim, sim.N), dtype=dv_1.dtype).cuda()
-        ret[:, relev_1] = dv_1
-        ret[:, relev_2] = dv_2
-        return ret
+        return _IdealGas_Mut_E_dv_Core(sim.N, dim,
+                                       sim.pos, sim.vel, sim.pr[self.key_rad_1], sim.pr[self.key_rad_2],
+                                       sim.pr["mass"], sim.pr[self.key_r_1], sim.pr[self.key_r_2])
+
+def _IdealGas_Mut_E_dv_Core(Num: int, dim: int,
+                            pos, vel, full_rad_1, full_rad_2,
+                            mass, key_r_1_arr, key_r_2_arr):
+    # Non-intersecting
+    assert torch.all(key_r_1_arr * key_r_2_arr == 0)
+    relev_1  : torch.Tensor = torch.nonzero(key_r_1_arr).flatten()
+    relev_2  : torch.Tensor = torch.nonzero(key_r_2_arr).flatten()
+    cnt_1    : int          = relev_1.shape[0]
+    cnt_2    : int          = relev_2.shape[0]
+    pos_1    : torch.Tensor = pos[:, relev_1]
+    pos_2    : torch.Tensor = pos[:, relev_2]
+    vel_1    : torch.Tensor = vel[:, relev_1]
+    vel_2    : torch.Tensor = vel[:, relev_2]
+    mass_1   : torch.Tensor = mass[relev_1]
+    mass_2   : torch.Tensor = mass[relev_2]
+    rad_1    : torch.Tensor = full_rad_1[relev_1]
+    rad_2    : torch.Tensor = full_rad_2[relev_2]
+    # pos_br_1[:][i][j] = position for i-th sphere
+    pos_br_1 : torch.Tensor = torch.broadcast_to(pos_1, (cnt_2, dim, cnt_1)).permute((1, 2, 0))
+    # pos_br_2[:][i][j] = position for j-th sphere
+    pos_br_2 : torch.Tensor = torch.broadcast_to(pos_2, (cnt_1, dim, cnt_2)).permute((1, 0, 2))
+    # diff[:][i][j] = position for i-th sphere   -   position for j-th sphere
+    diff     : torch.Tensor = pos_br_1 - pos_br_2
+    dist     : torch.Tensor = associative_float_sum(diff * diff, 0) ** 0.5
+    iszero   : torch.Tensor = (dist == 0).to(torch.float64)
+    dist += iszero
+    # vel_br_1[:][i][j] = velocity for i-th sphere
+    vel_br_1 : torch.Tensor = torch.broadcast_to(vel_1, (cnt_2, dim, cnt_1)).permute((1, 2, 0))
+    # vel_br_2[:][i][j] = velocity for j-th sphere
+    vel_br_2 : torch.Tensor = torch.broadcast_to(vel_2, (cnt_1, dim, cnt_2)).permute((1, 0, 2))
+    # vdiff[:][i][j] = velocity of i-th sphere   -   velocity of j-th sphere
+    vdiff    : torch.Tensor = vel_br_1 - vel_br_2
+    # vdiff_n[:][i][j] = vdiff[:][i][j] component along (diff[:][i][j] / dist)
+    vdiff_n  : torch.Tensor = associative_float_sum(diff * vdiff, 0) / dist
+    # rad_br_1[i][j] = radius of i-th sphere
+    rad_br_1 : torch.Tensor = torch.broadcast_to(rad_1, (cnt_2, cnt_1)).transpose(0, 1)
+    # rad_br_2[i][j] = radius of j-th sphere
+    rad_br_2 : torch.Tensor = torch.broadcast_to(rad_2, (cnt_1, cnt_2))
+    sumrad   : torch.Tensor = rad_br_1 + rad_br_2
+    collide  : torch.Tensor = (sumrad > dist) * (vdiff_n < 0)
+    # mass_br[i][j] = mass of the j-th sphere
+    mass_br_1: torch.Tensor = torch.broadcast_to(mass_1, (cnt_2, cnt_1)).transpose(0, 1)
+    mass_br_2: torch.Tensor = torch.broadcast_to(mass_2, (cnt_1, cnt_2))
+    summass  : torch.Tensor = mass_br_1 + mass_br_2
+    dv_mat_1 : torch.Tensor = - (2 * vdiff_n * collide * mass_br_2 / summass) * (diff / dist)
+    dv_1     : torch.Tensor = associative_float_sum(dv_mat_1, -1)
+    dv_mat_2 : torch.Tensor = (2 * vdiff_n * collide * mass_br_1 / summass) * (diff / dist)
+    dv_2     : torch.Tensor = associative_float_sum(dv_mat_2, -2)
+    ret      : torch.Tensor = torch.zeros((dim, Num), dtype=dv_1.dtype).cuda()
+    ret[:, relev_1] = dv_1
+    ret[:, relev_2] = dv_2
+    return ret
 
 
 class Simple_Van_Der_Walls(Physics):

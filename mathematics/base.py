@@ -1,31 +1,26 @@
 import numpy as np
 import torch
+import torch.types
 from math import *
 
-# Enable for preservation of perfect symmetry
-# Disable for performance
-enable_assoc = False
-
 # preserves perfect symmetry
-def associative_float_sum(arr : torch.Tensor, axes):
+# Due to restrictions imposed by torch.jit.script, only axes of type
+#   int are supported. Moreover, enable_assoc is presented as an
+#   argument with default value instead of a global variable.
+def associative_float_sum(arr : torch.Tensor,
+                          axis : int,
+                          enable_assoc : bool = False):
     if not enable_assoc:
-        return arr.sum(axes)
-    total_size = 1
-    if type(axes) == list or type(axes) == tuple:
-        for i in axes:
-            total_size *= arr.shape[i]
-    elif type(axes) == int:
-        total_size = arr.shape[axes]
-    else:
-        print("interesting_sum :: unknown axes type")
-    total_k = int(log2(total_size)) + 1
+        return arr.sum(axis)
+    total_size = torch.tensor(arr.shape[axis])
+    total_k = int(torch.log2(total_size)) + 1
     shift_n = 60 - total_k
 
     M = torch.max(torch.abs(arr)) + 2 ** (-500)
-    k = int(log2(M) + 1000) - 999
+    k = int(torch.log2(M) + 1000) - 999
     multip = 2 ** k
     arr = torch.round(arr * ((1 << shift_n) / multip)).to(torch.long)
-    arr = arr.sum(axes).to(torch.double)
+    arr = arr.sum(axis).to(torch.double)
     arr /= 1 << shift_n
     return arr * float(multip)
 
@@ -90,6 +85,20 @@ def tally_sum(indices : torch.Tensor, data : torch.Tensor):
     args = torch.argsort(indices)
     indices = indices[args]
     data = data[args]
+    cum = torch.cumsum(data, dim=0)
+    _, coun = torch.unique_consecutive(indices, return_counts=True)
+    coun_cum = torch.cumsum(coun, dim=0)
+    endpts = coun_cum - 1
+    endvals = cum[endpts]
+    startvals = torch.zeros(endvals.shape).cuda()
+    startvals[1:] = endvals[:-1]
+    startvals[0] = 0
+    return indices[endpts], endvals - startvals
+
+# Similar to `tally_sum`, but assumes that `indices` is already sorted
+def tally_sum_sorted(indices : torch.Tensor, data : torch.Tensor):
+    assert len(indices.shape) == 1
+    assert indices.shape[0] == data.shape[0]
     cum = torch.cumsum(data, dim=0)
     _, coun = torch.unique_consecutive(indices, return_counts=True)
     coun_cum = torch.cumsum(coun, dim=0)

@@ -1,5 +1,5 @@
 from physics.base import *
-from mathematics.base import tally_sum
+from mathematics.base import tally_sum_sorted
 
 
 # Force described by a hypergraph. Vertices are objects.
@@ -18,13 +18,16 @@ class GraphPositional(Physics):
         super().__init__('a')
         self.key_p = key_p
         self.force_f = force_f
-        self.adj = adj
+        self.adj = adj.to(torch.int64)
+        adj_flatten = adj.transpose(0, 1).flatten()
+        self.adj_argsort = torch.argsort(adj_flatten)
+        self.adj_sorted = adj_flatten[self.adj_argsort]
 
     def a(self, sim):
         dim      : int          = sim.dim
         pos      : torch.Tensor = sim.pos
         prop     : torch.Tensor = sim.pr[self.key_p]
-        adj      : torch.Tensor = self.adj.to(torch.int64)
+        adj      : torch.Tensor = self.adj
         graph_k  : int          = adj.shape[1]
         post     : tuple = ()
         propt    : tuple = ()
@@ -33,8 +36,7 @@ class GraphPositional(Physics):
             propt = propt + (prop[adj[:, i]],)
         forces = self.force_f(post, propt)
         all_forces = torch.concat(forces, 1).transpose(0, 1)
-        actee = adj.transpose(0, 1).flatten()
-        indice, summed = tally_sum(actee, all_forces)
+        indice, summed = tally_sum_sorted(self.adj_sorted, all_forces[self.adj_argsort])
         ret      : torch.tensor = torch.zeros((dim, sim.N)).cuda()
         ret[:, indice] = summed.transpose(0, 1)
         return ret
@@ -59,14 +61,17 @@ class GraphPosVel(Physics):
         super().__init__('a')
         self.key_p = key_p
         self.force_f = force_f
-        self.adj = adj
+        self.adj = adj.to(torch.int64)
+        adj_flatten = adj.transpose(0, 1).flatten()
+        self.adj_argsort = torch.argsort(adj_flatten)
+        self.adj_sorted = adj_flatten[self.adj_argsort]
 
     def a(self, sim):
         dim      : int          = sim.dim
         pos      : torch.Tensor = sim.pos
         vel      : torch.Tensor = sim.vel
         prop     : torch.Tensor = sim.pr[self.key_p]
-        adj      : torch.Tensor = self.adj.to(torch.int64)
+        adj      : torch.Tensor = self.adj
         graph_k  : int          = adj.shape[1]
         post     : tuple = ()
         velt     : tuple = ()
@@ -77,8 +82,7 @@ class GraphPosVel(Physics):
             propt = propt + (prop[adj[:, i]],)
         forces = self.force_f(post, velt, propt)
         all_forces = torch.concat(forces, 1).transpose(0, 1)
-        actee = adj.transpose(0, 1).flatten()
-        indice, summed = tally_sum(actee, all_forces)
+        indice, summed = tally_sum_sorted(self.adj_sorted, all_forces[self.adj_argsort])
         ret      : torch.tensor = torch.zeros((dim, sim.N), dtype=all_forces.dtype).cuda()
         ret[:, indice] = summed.transpose(0, 1)
         return ret

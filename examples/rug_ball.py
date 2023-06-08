@@ -99,8 +99,8 @@ sim.add_physics("Collision", idmut)
 sim.set_property_multi("rad", 0, (x_num + 1) * (y_num + 1), torch.zeros((x_num + 1) * (y_num + 1)) + 0.15)
 sim.set_property_multi("mass", 0, (x_num + 1) * (y_num + 1), torch.zeros((x_num + 1) * (y_num + 1)) + 0.1)
 sim.set_property_all("dummy", torch.zeros((x_num + 1) * (y_num + 1) + 1))
-sim.set_property_single("rad", (x_num + 1) * (y_num + 1), 0.8)
-sim.set_property_single("mass", (x_num + 1) * (y_num + 1), 2.5)
+sim.set_property_single("rad", (x_num + 1) * (y_num + 1), 1.6)
+sim.set_property_single("mass", (x_num + 1) * (y_num + 1), 10.0)
 sim.set_property_multi("surf", 0, (x_num + 1) * (y_num + 1), torch.zeros((x_num + 1) * (y_num + 1)) + 1)
 sim.set_property_single("sphere", (x_num + 1) * (y_num + 1), 1)
 sim.set_property_multi("presc", 0, x_num + 1, torch.zeros(x_num + 1) + 1)
@@ -136,7 +136,6 @@ def extra_display(sr : Spherical_Render):
         norms_hlp[:, -1] = norms_hlp[:, -2]
 
         glColor3f(0.5, 0.7, 0.6)
-        glEnable(GL_LIGHTING)
         for i in range(x_num):
             for j in range(y_num):
                 glBegin(GL_QUADS)
@@ -175,4 +174,12 @@ def save_video(sr : Spherical_Render):
 # type 'exec self.sv(self)' to save video
 spr.sv = save_video
 
-spr.render()
+import time
+
+# spr.render()
+tstart = time.time()
+for i in range(3000):
+    sim.update()
+    if i % 10 == 0:
+        print(i)
+print (time.time() - tstart)

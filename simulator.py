@@ -57,21 +57,27 @@ class Simulator:
     
     # Set property `pname` of particle `id`
     def set_property_single(self, pname, id, value):
+        value = torch.tensor(value)
         if not (pname in self.pr):
-            self.pr[pname] = torch.zeros(self.N).cuda()
-        self.pr[pname][id] = value
+            shape = value.shape
+            self.pr[pname] = torch.zeros((self.N,) + shape).cuda()
+        self.pr[pname][id] = value.cuda()
 
     # Set property `pname` of particle `id_begin:id_end`
     def set_property_multi(self, pname, id_begin, id_end, values):
+        assert self.pos.shape[1] == self.N
+        assert id_begin >= 0
+        assert id_end < self.N
         if not (pname in self.pr):
-            self.pr[pname] = torch.zeros(self.N).cuda()
-        self.pr[pname][id_begin:id_end] = values
+            shape = values.shape[1:]
+            self.pr[pname] = torch.zeros((self.N,) + shape).cuda()
+        self.pr[pname][id_begin:id_end] = values.cuda()
 
     # Set property `pname` of all particles
     def set_property_all(self, pname, values):
-        if not (pname in self.pr):
-            self.pr[pname] = torch.zeros(self.N).cuda()
-        self.pr[pname][0:self.N] = values
+        assert self.pos.shape[1] == self.N
+        assert values.shape[0] == self.N
+        self.pr[pname] = values.cuda()
 
     def add_physics(self, name, physics):
         self.physics[name] = physics
@@ -99,7 +105,7 @@ class Simulator:
             self.pos = torch.concat([self.pos, new_obj_pos.cuda()], -1)
             self.vel = torch.concat([self.vel, torch.zeros((self.dim, l)).cuda()], -1)
             for key in self.pr:
-                shape = self.pr[key].shape[:-1]
+                shape = self.pr[key].shape[1:]
                 self.pr[key] = torch.concat([self.pr[key], torch.zeros((l,) + shape).cuda()])
 
     # Delete objects
