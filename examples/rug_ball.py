@@ -171,15 +171,7 @@ def save_video(sr : Spherical_Render):
     sr.output.release()
     cv2.destroyAllWindows()
     print("Video saved")
+    
 # type 'exec self.sv(self)' to save video
 spr.sv = save_video
-
-import time
-
-# spr.render()
-tstart = time.time()
-for i in range(3000):
-    sim.update()
-    if i % 10 == 0:
-        print(i)
-print (time.time() - tstart)
+spr.render()

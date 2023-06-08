@@ -191,6 +191,7 @@ class IdealGas_Mut_E(Physics):
                                        sim.pos, sim.vel, sim.pr[self.key_rad_1], sim.pr[self.key_rad_2],
                                        sim.pr["mass"], sim.pr[self.key_r_1], sim.pr[self.key_r_2])
 
+@torch.jit.script
 def _IdealGas_Mut_E_dv_Core(Num: int, dim: int,
                             pos, vel, full_rad_1, full_rad_2,
                             mass, key_r_1_arr, key_r_2_arr):

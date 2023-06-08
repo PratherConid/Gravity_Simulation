@@ -96,6 +96,7 @@ def tally_sum(indices : torch.Tensor, data : torch.Tensor):
     return indices[endpts], endvals - startvals
 
 # Similar to `tally_sum`, but assumes that `indices` is already sorted
+@torch.jit.script
 def tally_sum_sorted(indices : torch.Tensor, data : torch.Tensor):
     assert len(indices.shape) == 1
     assert indices.shape[0] == data.shape[0]
